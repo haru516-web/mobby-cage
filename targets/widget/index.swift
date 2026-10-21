@@ -29,30 +29,44 @@ private func loadStyleID() -> String {
     return id
 }
 
+// 画像が読めないときの原因調べ用。ウィジェットの中に小さく出す（c: 共有領域 / f: 画像ファイル）
+private func diagnostics() -> String {
+    guard let group = appGroupID() else { return "id:none" }
+    let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
+    let hasContainer = container != nil
+    var hasFile = false
+    if let container {
+        hasFile = FileManager.default.fileExists(atPath: container.appendingPathComponent(imageFileName).path)
+    }
+    return "c:" + (hasContainer ? "ok" : "ng") + " f:" + (hasFile ? "ok" : "no")
+}
+
 struct CageEntry: TimelineEntry {
     let date: Date
     let image: UIImage?
     let styleID: String
+    let diag: String
 }
 
 struct CageProvider: TimelineProvider {
     func placeholder(in context: Context) -> CageEntry {
-        CageEntry(date: .now, image: nil, styleID: "standard")
+        CageEntry(date: .now, image: nil, styleID: "standard", diag: "")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CageEntry) -> Void) {
-        completion(CageEntry(date: .now, image: loadCageImage(), styleID: loadStyleID()))
+        completion(CageEntry(date: .now, image: loadCageImage(), styleID: loadStyleID(), diag: diagnostics()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CageEntry>) -> Void) {
         // 画像変更時はアプリ側から reloadWidget() されるので .never
-        completion(Timeline(entries: [CageEntry(date: .now, image: loadCageImage(), styleID: loadStyleID())], policy: .never))
+        completion(Timeline(entries: [CageEntry(date: .now, image: loadCageImage(), styleID: loadStyleID(), diag: diagnostics())], policy: .never))
     }
 }
 
 struct CageView: View {
     let image: UIImage?
     let styleID: String
+    let diag: String
 
     var body: some View {
         GeometryReader { geo in
@@ -82,11 +96,15 @@ struct CageView: View {
                         .padding(.bottom, h * 0.09)
                 } else {
                     // まだ檻を作っていない（または画像を読めない）とき
-                    Text("アプリで\n画像を選んでね")
-                        .font(.system(size: min(w, h) * 0.09, weight: .bold))
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(Color(red: 0.2, green: 0.18, blue: 0.3))
-                        .frame(width: w, height: h * 0.9, alignment: .center)
+                    VStack(spacing: 6) {
+                        Text("アプリで\n画像を選んでね")
+                            .font(.system(size: min(w, h) * 0.09, weight: .bold))
+                            .multilineTextAlignment(.center)
+                        Text(diag)
+                            .font(.system(size: min(w, h) * 0.05, design: .monospaced))
+                    }
+                    .foregroundColor(Color(red: 0.2, green: 0.18, blue: 0.3))
+                    .frame(width: w, height: h * 0.9, alignment: .center)
                 }
 
                 if UIImage(named: squareName) != nil {
@@ -103,7 +121,7 @@ struct CageView: View {
 struct OrikkoWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "OrikkoWidget", provider: CageProvider()) { entry in
-            CageView(image: entry.image, styleID: entry.styleID)
+            CageView(image: entry.image, styleID: entry.styleID, diag: entry.diag)
                 .containerBackground(for: .widget) { Color.black }
         }
         .configurationDisplayName("おりっこ")
