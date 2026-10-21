@@ -110,7 +110,12 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
     });
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[styles.root, { paddingTop: insets.top + 8 }]}
+      // 編集中は、画面のどこをタップしても解除する（×・完了・檻のタップはそれぞれの処理を優先。スクロールは邪魔しない）
+      onStartShouldSetResponder={() => editing}
+      onResponderRelease={() => setEditing(false)}
+    >
       <View style={styles.headerRow}>
         <Text style={styles.title}>マイ檻</Text>
         {editing ? (
