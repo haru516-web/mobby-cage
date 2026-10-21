@@ -76,18 +76,17 @@ export function MyCagesScreen() {
       <Text style={styles.title}>マイ檻</Text>
       <Text style={styles.sub}>タップでウィジェットに設定・長押しで削除</Text>
 
-      {current && (
-        <View style={styles.current}>
-          <CageView imageUri={current.uri} styleId={current.styleId} style={styles.currentCage} />
-          <View style={styles.currentText}>
-            <Text style={styles.currentLabel}>ウィジェットに表示中</Text>
-            <Text style={styles.currentHint}>下の一覧から選んで切り替え</Text>
-          </View>
-        </View>
-      )}
-
       <FlatList
         data={cages}
+        ListHeaderComponent={
+          current ? (
+            <View style={styles.current}>
+              <Text style={styles.currentLabel}>ウィジェットに表示中</Text>
+              <CageView imageUri={current.uri} styleId={current.styleId} style={styles.currentCage} />
+              <Text style={styles.listLabel}>すべての檻</Text>
+            </View>
+          ) : null
+        }
         keyExtractor={(c) => c.id}
         numColumns={2}
         columnWrapperStyle={styles.row}
@@ -146,19 +145,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800', paddingHorizontal: 4 },
   sub: { color: '#8d8a9f', fontSize: 12, paddingHorizontal: 4, marginTop: 2 },
-  current: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#211f2b',
-    borderRadius: 18,
-    padding: 10,
-    marginTop: 14,
-  },
-  currentCage: { width: 96, borderRadius: 12 },
-  currentText: { flex: 1 },
-  currentLabel: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  currentHint: { color: '#8d8a9f', fontSize: 11, marginTop: 4 },
+  current: { marginBottom: 6 },
+  currentLabel: { color: '#fff', fontSize: 14, fontWeight: '800', marginBottom: 8, paddingHorizontal: 4 },
+  currentCage: { width: '100%', borderRadius: 20 },
+  listLabel: { color: '#8d8a9f', fontSize: 12, fontWeight: '700', marginTop: 20, marginBottom: 4, paddingHorizontal: 4 },
   list: { paddingTop: 14, paddingBottom: 96 },
   row: { gap: 12, marginBottom: 12 },
   cell: { flex: 1, maxWidth: '50%' },
