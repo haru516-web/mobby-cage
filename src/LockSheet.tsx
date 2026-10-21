@@ -257,31 +257,37 @@ function Dots({ value, reveal, flash }: { value: string; reveal: boolean; flash:
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'] as const;
 
 function Keypad({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // 押したキーを、指を離したあとも少しの間（約0.2秒）白く光らせる。押した瞬間に見逃さないように。
+  const [lit, setLit] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const press = (k: string) => {
+    setLit(k);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setLit(null), 220);
+    if (k === 'del') onChange(value.slice(0, -1));
+    else if (value.length < PIN_LENGTH) onChange(value + k);
+  };
+
   return (
     <View style={styles.keypad}>
       {KEYS.map((k, i) =>
         k === '' ? (
           <View key={i} style={styles.key} />
         ) : (
-          <Pressable
-            key={i}
-            style={styles.key}
-            onPress={() => {
-              if (k === 'del') onChange(value.slice(0, -1));
-              else if (value.length < PIN_LENGTH) onChange(value + k);
+          <Pressable key={i} style={styles.key} onPress={() => press(k)} accessibilityLabel={k === 'del' ? '削除' : k}>
+            {({ pressed }) => {
+              const on = pressed || lit === k;
+              return (
+                <View style={[styles.keyFace, on && styles.keyFaceOn]}>
+                  {k === 'del' ? (
+                    <Ionicons name="backspace-outline" size={24} color={on ? '#14131a' : '#fff'} />
+                  ) : (
+                    <Text style={[styles.keyText, on && styles.keyTextOn]}>{k}</Text>
+                  )}
+                </View>
+              );
             }}
-            accessibilityLabel={k === 'del' ? '削除' : k}
-          >
-            {({ pressed }) => (
-              // 押している間は丸く光らせて、どのキーを押したか分かるようにする
-              <View style={[styles.keyFace, pressed && styles.keyFacePressed]}>
-                {k === 'del' ? (
-                  <Ionicons name="backspace-outline" size={24} color="#fff" />
-                ) : (
-                  <Text style={styles.keyText}>{k}</Text>
-                )}
-              </View>
-            )}
           </Pressable>
         )
       )}
@@ -319,8 +325,9 @@ const styles = StyleSheet.create({
   keypad: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
   key: { width: '33.33%', height: 58, alignItems: 'center', justifyContent: 'center' },
   keyFace: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
-  keyFacePressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
+  keyFaceOn: { backgroundColor: '#fff', transform: [{ scale: 0.92 }] },
   keyText: { color: '#fff', fontSize: 24, fontWeight: '600' },
+  keyTextOn: { color: '#14131a', fontWeight: '800' },
   links: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 4 },
   link: { color: '#9cc3ff', fontSize: 13, fontWeight: '600' },
   cancel: { alignSelf: 'center', marginTop: 14 },
