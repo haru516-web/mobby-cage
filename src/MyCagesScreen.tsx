@@ -63,6 +63,8 @@ export function MyCagesScreen() {
     refresh();
   };
 
+  const current = cages.find((c) => c.id === widgetId) ?? null;
+
   const remove = (id: string) =>
     confirmDelete(async () => {
       await deleteCage(id);
@@ -73,6 +75,16 @@ export function MyCagesScreen() {
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
       <Text style={styles.title}>マイ檻</Text>
       <Text style={styles.sub}>タップでウィジェットに設定・長押しで削除</Text>
+
+      {current && (
+        <View style={styles.current}>
+          <CageView imageUri={current.uri} styleId={current.styleId} style={styles.currentCage} />
+          <View style={styles.currentText}>
+            <Text style={styles.currentLabel}>ウィジェットに表示中</Text>
+            <Text style={styles.currentHint}>下の一覧から選んで切り替え</Text>
+          </View>
+        </View>
+      )}
 
       <FlatList
         data={cages}
@@ -134,6 +146,19 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800', paddingHorizontal: 4 },
   sub: { color: '#8d8a9f', fontSize: 12, paddingHorizontal: 4, marginTop: 2 },
+  current: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#211f2b',
+    borderRadius: 18,
+    padding: 10,
+    marginTop: 14,
+  },
+  currentCage: { width: 96, borderRadius: 12 },
+  currentText: { flex: 1 },
+  currentLabel: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  currentHint: { color: '#8d8a9f', fontSize: 11, marginTop: 4 },
   list: { paddingTop: 14, paddingBottom: 96 },
   row: { gap: 12, marginBottom: 12 },
   cell: { flex: 1, maxWidth: '50%' },
