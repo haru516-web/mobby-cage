@@ -1,9 +1,8 @@
 
-// 背景と檻（透過PNG）。Swift 側では Image("bg") / Image("cage_square") / Image("cage_wide")
+// 背景と檻（透過PNG）。Swift 側では Image("bg") / Image("cage_square") など
 const images = {
   bg: '../../assets/bg.png',
   cage_square: '../../assets/cage_square.png',
-  cage_wide: '../../assets/cage_wide.png',
   bg_cute_01: '../../assets/bg_cute_01.png',
   bg_cute_02: '../../assets/bg_cute_02.png',
   bg_sturdy_01: '../../assets/bg_sturdy_01.png',

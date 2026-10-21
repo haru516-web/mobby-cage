@@ -26,4 +26,4 @@ Web ではアプリ UI だけ確認できる（画像は localStorage に保存�
 - `src/CageStylesScreen.tsx` / `src/cageStyles.ts` … 使える檻（デザイン）の一覧
 - `src/CageView.tsx` … 檻の描画（`assets/bg.png` + 画像 + `assets/cage_square.png`）
 - `src/cageStore.ts` … 檻の保存（600px PNG）。iOS では App Group に `cage_<id>.png`、ウィジェット用に `cage_image.png` へコピーして再読込
-- `targets/widget/` … ウィジェット本体（SwiftUI）。`index.swift` が `cage_image.png` を読み、`assets/bg.png` / `cage_square.png` / `cage_wide.png` と重ねる
+- `targets/widget/` … ウィジェット本体（SwiftUI）。`index.swift` が `cage_image.png` を読み、背景(`bg*.png`)と檻(`cage_square*.png`)を重ねる。小・大サイズのみ対応（中サイズは無し）

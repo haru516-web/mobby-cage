@@ -58,13 +58,11 @@ struct CageView: View {
         GeometryReader { geo in
             let w = geo.size.width
             let h = geo.size.height
-            let wide = w / h > 1.5   // 中サイズは横長の檻画像（横長版は標準のみ。他の檻は正方形版を使う）
             let squareName = styleID == "standard" ? "cage_square" : "cage_square_\(styleID)"
             let bgName = styleID == "standard" ? "bg" : "bg_\(styleID)"
-            let cageName = (wide && styleID == "standard") ? "cage_wide" : squareName
 
             ZStack(alignment: .bottom) {
-                // 背景は下端基準（横長でも床が見える）
+                // 背景は下端基準
                 Image(bgName)
                     .resizable()
                     .scaledToFill()
@@ -80,7 +78,7 @@ struct CageView: View {
                         .padding(.bottom, h * 0.09)
                 }
 
-                Image(cageName)
+                Image(squareName)
                     .resizable()
                     .frame(width: w, height: h)
             }
@@ -97,7 +95,7 @@ struct OriCharaWidget: Widget {
         }
         .configurationDisplayName("檻キャラ")
         .description("アップした画像が檻に閉じ込められています。")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemLarge])
         .contentMarginsDisabled()
     }
 }
