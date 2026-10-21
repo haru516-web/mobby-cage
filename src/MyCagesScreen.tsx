@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CageView } from './CageView';
 import { CAGE_STYLES, DEFAULT_STYLE_ID } from './cageStyles';
+import { removeBackground } from './cutout';
 import { createCage, deleteCage, loadCages, loadWidgetCageId, setWidgetCage, type Cage } from './cageStore';
 
 function confirmDelete(onOk: () => void) {
@@ -25,7 +26,13 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   const [widgetId, setWidgetId] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null); // 選んだ直後でまだ保存していない画像
   const [pendingStyle, setPendingStyle] = useState(DEFAULT_STYLE_ID); // プレビューで選んでいる檻のデザイン
+  const [mode, setMode] = useState<'original' | 'cutout'>('original'); // そのまま使う / 背景を透過して使う
+  const [cutoutUri, setCutoutUri] = useState<string | null>(null);
+  const [cutting, setCutting] = useState(false);
+  const [cutError, setCutError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const previewUri = mode === 'cutout' && cutoutUri ? cutoutUri : pending;
 
   const refresh = useCallback(async () => {
     setCages(await loadCages());
@@ -43,14 +50,37 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
     });
     if (res.canceled) return;
     setPendingStyle(DEFAULT_STYLE_ID);
+    setMode('original');
+    setCutoutUri(null);
+    setCutError(null);
     setPending(res.assets[0].uri);
+  };
+
+  // 透過は初回だけ処理して、結果を使い回す
+  const chooseMode = async (next: 'original' | 'cutout') => {
+    if (cutting) return;
+    setCutError(null);
+    if (next === 'original' || cutoutUri || !pending) {
+      setMode(next);
+      return;
+    }
+    setCutting(true);
+    try {
+      setCutoutUri(await removeBackground(pending));
+      setMode('cutout');
+    } catch (e) {
+      setMode('original');
+      setCutError(e instanceof Error ? e.message : '背景を透過できませんでした');
+    } finally {
+      setCutting(false);
+    }
   };
 
   const save = async () => {
     if (!pending || saving) return;
     setSaving(true);
     try {
-      await createCage(pending, pendingStyle);
+      await createCage(previewUri ?? pending, pendingStyle);
       setPending(null);
       refresh();
     } finally {
@@ -114,13 +144,36 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
           <Text style={styles.title}>プレビュー</Text>
           <Text style={styles.sub}>檻のデザインを選べます</Text>
           <View style={styles.previewCage}>
-            <CageView imageUri={pending} styleId={pendingStyle} />
+            <CageView imageUri={previewUri} styleId={pendingStyle} />
+            {cutting && (
+              <View style={styles.cuttingOverlay}>
+                <ActivityIndicator color="#fff" />
+                <Text style={styles.cuttingText}>背景を透過中…</Text>
+              </View>
+            )}
           </View>
+          <View style={styles.modeRow}>
+            {(
+              [
+                ['original', 'そのまま使う'],
+                ['cutout', '背景を透過して使う'],
+              ] as const
+            ).map(([key, label]) => (
+              <Pressable
+                key={key}
+                onPress={() => chooseMode(key)}
+                style={[styles.modeBtn, mode === key && styles.modeBtnActive]}
+              >
+                <Text style={[styles.modeText, mode === key && styles.modeTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {cutError && <Text style={styles.cutError}>{cutError}</Text>}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleRow} contentContainerStyle={styles.styleRowContent}>
             {CAGE_STYLES.map((s) => (
               <Pressable key={s.id} onPress={() => setPendingStyle(s.id)} style={styles.styleItem}>
                 <CageView
-                  imageUri={pending}
+                  imageUri={previewUri}
                   styleId={s.id}
                   style={[styles.styleThumb, s.id === pendingStyle && styles.styleThumbActive]}
                 />
@@ -171,6 +224,28 @@ const styles = StyleSheet.create({
   badgeText: { color: '#14131a', fontSize: 10, fontWeight: '800' },
   preview: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 20 },
   previewCage: { marginTop: 20, width: '100%', maxWidth: 420, alignSelf: 'center' },
+  cuttingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 24,
+    backgroundColor: 'rgba(20,19,26,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  cuttingText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    maxWidth: 420,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  modeBtn: { flex: 1, borderRadius: 999, paddingVertical: 10, alignItems: 'center', backgroundColor: '#2c2a39' },
+  modeBtnActive: { backgroundColor: '#fff' },
+  modeText: { color: '#c9c6d8', fontSize: 13, fontWeight: '700' },
+  modeTextActive: { color: '#14131a' },
+  cutError: { color: '#ff9aa8', fontSize: 12, textAlign: 'center', marginTop: 8 },
   styleRow: { marginTop: 16, flexGrow: 0 },
   styleRowContent: { gap: 10, paddingHorizontal: 2 },
   styleItem: { width: 72, alignItems: 'center' },
