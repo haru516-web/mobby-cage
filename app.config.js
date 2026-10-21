@@ -34,7 +34,8 @@ module.exports = {
         'com.apple.security.application-groups': [APP_GROUP],
       },
     },
-    extra: { appGroup: APP_GROUP },
+    extra: { appGroup: APP_GROUP, eas: { projectId: '7ae7a079-834b-4a7d-8ded-60fe4fe8733c' } },
+    owner: 'obana.h',
     web: { bundler: 'metro' },
   },
 };
