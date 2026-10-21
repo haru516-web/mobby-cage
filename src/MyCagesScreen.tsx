@@ -19,7 +19,7 @@ function confirmDelete(onOk: () => void) {
 }
 
 /** 自分で作った檻の一覧（横2列・正方形）。右下の＋で新規作成。 */
-export function MyCagesScreen() {
+export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   const insets = useSafeAreaInsets();
   const [cages, setCages] = useState<Cage[]>([]);
   const [widgetId, setWidgetId] = useState<string | null>(null);
@@ -73,7 +73,12 @@ export function MyCagesScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>マイ檻</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>マイ檻</Text>
+        <Pressable onPress={onHelp} hitSlop={12} accessibilityLabel="使い方">
+          <Ionicons name="help-circle-outline" size={26} color="#8d8a9f" />
+        </Pressable>
+      </View>
       <Text style={styles.sub}>タップでウィジェットに設定・長押しで削除</Text>
 
       <FlatList
@@ -143,6 +148,7 @@ export function MyCagesScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 4 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800', paddingHorizontal: 4 },
   sub: { color: '#8d8a9f', fontSize: 12, paddingHorizontal: 4, marginTop: 2 },
   current: { marginBottom: 6 },
