@@ -42,7 +42,7 @@
 
 ## 作業場所（git worktree）
 - 作業は専用の worktree `D:\ori-chara-ios-codex`（ブランチ `codex/assets`）だけで行う。元のフォルダ `D:\ori-chara-ios`（main）には触らない。
-- このフォルダがまだ無い場合は、元のフォルダで次を実行して作る（作成済みなら不要）。
+- 最初に、元のフォルダ `D:\ori-chara-ios` で次を実行して worktree を作成する（すでに存在する場合は作り直さずそのまま使う）。
   `git worktree add ../ori-chara-ios-codex codex/assets`
 - `git branch --show-current` が `codex/assets` であることを最初に確認する。違うなら作業せず報告する。
 - 他のブランチへの切り替え、マージ、push はしない。コミットまでで止める。
@@ -50,7 +50,7 @@
 ## 作業手順と制約
 - 作業ブランチ: `codex/assets`（すでに作成済み。他のブランチには触らない）。
 - 変更してよいのは上記3ファイルのみ。`src/` `targets/` `App.tsx` などのコードや設定は変更しない。
-- 画像の生成には、あなたが使える画像生成機能を使う。使えない場合は、その旨を伝え、画像生成AI用のプロンプトを3つ出力して止まる（無理にコードで描かない）。
+- 画像の生成には、あなたが使える画像生成機能を使う。
 - `cage_square.png` と `cage_wide.png` が本当に透過になっているか、Python（Pillow）で確認する。
   - モードが RGBA であること
   - 四隅の内側（格子の間）のアルファが 0 であること
@@ -68,14 +68,14 @@
 以下を貼れば最低限動く短縮版。詳細は上の本文を参照させる。
 
 ```
-作業は git worktree の D:\ori-chara-ios-codex（ブランチ codex/assets）だけで行ってください。無ければ元のフォルダで `git worktree add ../ori-chara-ios-codex codex/assets` を実行。main や他ブランチには触らず、push もしないでください。
+最初に、元のフォルダ D:\ori-chara-ios で `git worktree add ../ori-chara-ios-codex codex/assets` を実行して worktree を作成してください（既にあれば作り直さずそのまま使う）。以降の作業は D:\ori-chara-ios-codex（ブランチ codex/assets）だけで行い、main や他ブランチには触らず、push もしないでください。
 
 assets/ の次の3枚を作って上書きしてください。コードは変更しないこと。
 - bg.png: 1024x1024 不透明。真正面の平面イラスト、明るいパステル基調、遠近感のある床は無し、中央は静かで低コントラスト、小物・文字なし。
 - cage_square.png: 1024x1024 背景透過RGBA。真正面の金属の丸棒の檻。縦格子4〜5本＋外枠で細く、面積は20%以下、内側は完全に透明、外側に影や背景は無し。
 - cage_wide.png: 1536x768 背景透過RGBA。上と同じデザインで縦格子8本前後。
 
-画像生成が使えなければ、画像生成AI用のプロンプト3つを出して止まってください。完成後、Pillowで透過（RGBA・内側のアルファ0・不透明率20%以下）を確認し、コミットして結果を報告してください。
+完成後、Pillowで透過（RGBA・内側のアルファ0・不透明率20%以下）を確認し、コミットして結果を報告してください。
 
 詳細は docs/codex-asset-prompt.md を参照（main にあります。worktree から見えない場合は `git show main:docs/codex-asset-prompt.md`）。
 ```
