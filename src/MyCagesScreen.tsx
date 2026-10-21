@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +22,8 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
   const insets = useSafeAreaInsets();
   const [cages, setCages] = useState<Cage[]>([]);
   const [widgetId, setWidgetId] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null); // 選んだ直後でまだ保存していない画像
+  const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setCages(await loadCages());
@@ -35,13 +37,22 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
   const add = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
       quality: 1,
     });
     if (res.canceled) return;
-    await createCage(res.assets[0].uri);
-    refresh();
+    setPending(res.assets[0].uri);
+  };
+
+  const save = async () => {
+    if (!pending || saving) return;
+    setSaving(true);
+    try {
+      await createCage(pending);
+      setPending(null);
+      refresh();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const use = async (id: string) => {
@@ -79,6 +90,24 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
         )}
       />
 
+      <Modal visible={pending !== null} animationType="slide" onRequestClose={() => setPending(null)}>
+        <View style={[styles.preview, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
+          <Text style={styles.title}>プレビュー</Text>
+          <Text style={styles.sub}>この檻に閉じ込めます</Text>
+          <View style={styles.previewCage}>
+            <CageView imageUri={pending} styleId={styleId} />
+          </View>
+          <View style={styles.previewButtons}>
+            <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => setPending(null)}>
+              <Text style={styles.btnGhostText}>やめる</Text>
+            </Pressable>
+            <Pressable style={[styles.btn, styles.btnMain]} onPress={save} disabled={saving}>
+              <Text style={styles.btnMainText}>{saving ? '保存中…' : 'この檻にする'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <Pressable style={styles.fab} onPress={add} accessibilityLabel="新しい檻を作る">
         <Ionicons name="add" size={32} color="#14131a" />
       </Pressable>
@@ -104,6 +133,14 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   badgeText: { color: '#14131a', fontSize: 10, fontWeight: '800' },
+  preview: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 20 },
+  previewCage: { marginTop: 20, width: '100%', maxWidth: 420, alignSelf: 'center' },
+  previewButtons: { marginTop: 'auto', flexDirection: 'row', gap: 12, maxWidth: 420, width: '100%', alignSelf: 'center' },
+  btn: { flex: 1, borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
+  btnGhost: { backgroundColor: '#2c2a39' },
+  btnGhostText: { color: '#e6e4f0', fontSize: 15, fontWeight: '700' },
+  btnMain: { backgroundColor: '#fff', flex: 1.5 },
+  btnMainText: { color: '#14131a', fontSize: 15, fontWeight: '800' },
   empty: { color: '#6f6c80', fontSize: 14, textAlign: 'center', marginTop: 80 },
   fab: {
     position: 'absolute',
