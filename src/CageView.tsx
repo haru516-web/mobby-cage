@@ -1,8 +1,6 @@
 import { findStyle } from './cageStyles';
 import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-const BG = require('../assets/bg.png');
-
 /** 画像を檻に閉じ込めた絵（背景画像 + 画像 + 檻の透過PNG）。ウィジェット(Swift)と揃えてある。 */
 export function CageView({
   imageUri,
@@ -17,7 +15,7 @@ export function CageView({
     <View style={[styles.room, style]}>
       {/* 背景は下端基準 */}
       <View style={styles.bgBox}>
-        <Image source={BG} style={styles.fill} resizeMode="cover" />
+        <Image source={findStyle(styleId).bg} style={styles.fill} resizeMode="cover" />
       </View>
       {imageUri && <Image source={{ uri: imageUri }} style={styles.chara} resizeMode="contain" />}
       <Image source={findStyle(styleId).square} style={styles.fill} resizeMode="stretch" />

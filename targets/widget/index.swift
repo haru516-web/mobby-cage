@@ -60,11 +60,12 @@ struct CageView: View {
             let h = geo.size.height
             let wide = w / h > 1.5   // 中サイズは横長の檻画像（横長版は標準のみ。他の檻は正方形版を使う）
             let squareName = styleID == "standard" ? "cage_square" : "cage_square_\(styleID)"
+            let bgName = styleID == "standard" ? "bg" : "bg_\(styleID)"
             let cageName = (wide && styleID == "standard") ? "cage_wide" : squareName
 
             ZStack(alignment: .bottom) {
                 // 背景は下端基準（横長でも床が見える）
-                Image("bg")
+                Image(bgName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: w, height: h, alignment: .bottom)
