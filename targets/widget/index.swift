@@ -87,9 +87,9 @@ struct CageView: View {
     }
 }
 
-struct OriCharaWidget: Widget {
+struct OrikkoWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "OriCharaWidget", provider: CageProvider()) { entry in
+        StaticConfiguration(kind: "OrikkoWidget", provider: CageProvider()) { entry in
             CageView(image: entry.image, styleID: entry.styleID)
                 .containerBackground(for: .widget) { Color.black }
         }
@@ -101,8 +101,8 @@ struct OriCharaWidget: Widget {
 }
 
 @main
-struct OriCharaWidgetBundle: WidgetBundle {
+struct OrikkoWidgetBundle: WidgetBundle {
     var body: some Widget {
-        OriCharaWidget()
+        OrikkoWidget()
     }
 }

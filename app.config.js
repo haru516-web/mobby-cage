@@ -1,11 +1,11 @@
 // Bundle ID / App Group はここ1か所で決まる。自分の Apple Developer のものに変える。
-const BUNDLE_ID = 'com.example.orichara';
+const BUNDLE_ID = 'com.example.orikko';
 const APP_GROUP = `group.${BUNDLE_ID}`;
 
 module.exports = {
   expo: {
     name: 'おりっこ',
-    slug: 'ori-chara',
+    slug: 'orikko',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',

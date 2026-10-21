@@ -1,4 +1,4 @@
-# おりっこ (ori-chara-ios)
+# おりっこ (orikko)
 
 アプリで好きな画像をアップすると、ホーム画面ウィジェットでその画像が檻に閉じ込められた表示になる。
 Expo (SDK 54) + `@bacons/apple-targets`（iOS ウィジェット）。Windows だけで開発・ビルドできる。

@@ -24,7 +24,7 @@ const images = {
 /** @type {import('@bacons/apple-targets/app.plugin').ConfigFunction} */
 module.exports = (config) => ({
   type: 'widget',
-  name: 'OriCharaWidget',
+  name: 'OrikkoWidget',
   displayName: 'おりっこ',
   deploymentTarget: '17.0',
   frameworks: ['SwiftUI', 'WidgetKit'],
