@@ -93,7 +93,7 @@ struct OriCharaWidget: Widget {
             CageView(image: entry.image, styleID: entry.styleID)
                 .containerBackground(for: .widget) { Color.black }
         }
-        .configurationDisplayName("檻キャラ")
+        .configurationDisplayName("おりっこ")
         .description("アップした画像が檻に閉じ込められています。")
         .supportedFamilies([.systemSmall, .systemLarge])
         .contentMarginsDisabled()

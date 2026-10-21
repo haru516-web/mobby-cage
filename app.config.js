@@ -4,7 +4,7 @@ const APP_GROUP = `group.${BUNDLE_ID}`;
 
 module.exports = {
   expo: {
-    name: '檻キャラ',
+    name: 'おりっこ',
     slug: 'ori-chara',
     version: '1.0.0',
     orientation: 'portrait',

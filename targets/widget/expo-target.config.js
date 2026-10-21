@@ -25,7 +25,7 @@ const images = {
 module.exports = (config) => ({
   type: 'widget',
   name: 'OriCharaWidget',
-  displayName: '檻キャラ',
+  displayName: 'おりっこ',
   deploymentTarget: '17.0',
   frameworks: ['SwiftUI', 'WidgetKit'],
   colors: {
