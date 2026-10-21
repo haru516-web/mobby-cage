@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, ScrollV
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CageCell } from './CageCell';
 import { CageView } from './CageView';
 import { CAGE_STYLES, DEFAULT_STYLE_ID } from './cageStyles';
 import { removeBackground } from './cutout';
@@ -14,7 +15,7 @@ function confirmDelete(onOk: () => void) {
     return;
   }
   Alert.alert('この檻を削除しますか？', undefined, [
-    { text: 'やめる', style: 'cancel' },
+    { text: 'キャンセル', style: 'cancel' },
     { text: '削除', style: 'destructive', onPress: onOk },
   ]);
 }
@@ -31,6 +32,7 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   const [cutting, setCutting] = useState(false);
   const [cutError, setCutError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false); // 長押しで入る編集モード（ゆらゆら＋×で削除）
 
   const previewUri = mode === 'cutout' && cutoutUri ? cutoutUri : pending;
 
@@ -89,6 +91,10 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   };
 
   const use = async (id: string) => {
+    if (editing) {
+      setEditing(false);
+      return;
+    }
     await setWidgetCage(id);
     refresh();
   };
@@ -98,6 +104,8 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   const remove = (id: string) =>
     confirmDelete(async () => {
       await deleteCage(id);
+      const rest = await loadCages();
+      if (rest.length === 0) setEditing(false);
       refresh();
     });
 
@@ -105,11 +113,19 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>マイ檻</Text>
-        <Pressable onPress={onHelp} hitSlop={12} accessibilityLabel="使い方">
-          <Ionicons name="help-circle-outline" size={26} color="#8d8a9f" />
-        </Pressable>
+        {editing ? (
+          <Pressable onPress={() => setEditing(false)} hitSlop={12}>
+            <Text style={styles.done}>完了</Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={onHelp} hitSlop={12} accessibilityLabel="使い方">
+            <Ionicons name="help-circle-outline" size={26} color="#8d8a9f" />
+          </Pressable>
+        )}
       </View>
-      <Text style={styles.sub}>タップでウィジェットに設定・長押しで削除</Text>
+      <Text style={styles.sub}>
+        {editing ? '右上の×で削除・「完了」で終了' : 'タップでウィジェットに設定・長押しで編集'}
+      </Text>
 
       <FlatList
         data={cages}
@@ -123,19 +139,20 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
           ) : null
         }
         keyExtractor={(c) => c.id}
+        extraData={editing}
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.list}
         ListEmptyComponent={<Text style={styles.empty}>右下の＋から檻を作ろう</Text>}
         renderItem={({ item }) => (
-          <Pressable style={styles.cell} onPress={() => use(item.id)} onLongPress={() => remove(item.id)}>
-            <CageView imageUri={item.uri} styleId={item.styleId} style={styles.cage} />
-            {item.id === widgetId && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>ウィジェット</Text>
-              </View>
-            )}
-          </Pressable>
+          <CageCell
+            cage={item}
+            active={item.id === widgetId}
+            editing={editing}
+            onPress={() => use(item.id)}
+            onLongPress={() => setEditing(true)}
+            onDelete={() => remove(item.id)}
+          />
         )}
       />
 
@@ -192,15 +209,18 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
         </View>
       </Modal>
 
+      {!editing && (
       <Pressable style={styles.fab} onPress={add} accessibilityLabel="新しい檻を作る">
         <Ionicons name="add" size={32} color="#14131a" />
       </Pressable>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 16 },
+  done: { color: '#fff', fontSize: 15, fontWeight: '800' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 4 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800', paddingHorizontal: 4 },
   sub: { color: '#8d8a9f', fontSize: 12, paddingHorizontal: 4, marginTop: 2 },
@@ -210,18 +230,6 @@ const styles = StyleSheet.create({
   listLabel: { color: '#8d8a9f', fontSize: 12, fontWeight: '700', marginTop: 20, marginBottom: 4, paddingHorizontal: 4 },
   list: { paddingTop: 14, paddingBottom: 96 },
   row: { gap: 12, marginBottom: 12 },
-  cell: { flex: 1, maxWidth: '50%' },
-  cage: { borderRadius: 16 },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeText: { color: '#14131a', fontSize: 10, fontWeight: '800' },
   preview: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 20 },
   previewCage: { marginTop: 20, width: '100%', maxWidth: 420, alignSelf: 'center' },
   cuttingOverlay: {
