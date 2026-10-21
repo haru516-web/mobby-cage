@@ -124,3 +124,27 @@ export async function deleteCage(id: string): Promise<void> {
   } catch {}
   reloadWidget();
 }
+
+const STYLE_KEY = 'cageStyleID'; // ウィジェット(Swift)も同じキーで読む
+
+export async function loadStyleId(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(STYLE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** 使う檻のデザインを保存し、iOS ではウィジェットにも伝えて再描画させる。 */
+export async function saveStyleId(id: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STYLE_KEY, id);
+  } catch {}
+  if (!isIOS) return;
+  try {
+    const { ExtensionStorage } = require('@bacons/apple-targets');
+    const group = Constants.expoConfig?.extra?.appGroup as string;
+    new ExtensionStorage(group).set(STYLE_KEY, id);
+    ExtensionStorage.reloadWidget();
+  } catch {}
+}

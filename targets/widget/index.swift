@@ -3,6 +3,7 @@ import WidgetKit
 
 // アプリ(JS)が App Group のコンテナに書き込んだ画像(cage_image.png)を読む。
 private let imageFileName = "cage_image.png"
+private let styleKey = "cageStyleID"   // アプリ(JS)が ExtensionStorage で書く。standard なら未設定
 
 private func appGroupID() -> String? {
     // app.config.js の BUNDLE_ID から "group.<bundle id>" を作っているので、
@@ -21,34 +22,45 @@ private func loadCageImage() -> UIImage? {
     return UIImage(contentsOfFile: dir.appendingPathComponent(imageFileName).path)
 }
 
+private func loadStyleID() -> String {
+    guard let group = appGroupID(),
+          let id = UserDefaults(suiteName: group)?.string(forKey: styleKey)
+    else { return "standard" }
+    return id
+}
+
 struct CageEntry: TimelineEntry {
     let date: Date
     let image: UIImage?
+    let styleID: String
 }
 
 struct CageProvider: TimelineProvider {
     func placeholder(in context: Context) -> CageEntry {
-        CageEntry(date: .now, image: nil)
+        CageEntry(date: .now, image: nil, styleID: "standard")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CageEntry) -> Void) {
-        completion(CageEntry(date: .now, image: loadCageImage()))
+        completion(CageEntry(date: .now, image: loadCageImage(), styleID: loadStyleID()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CageEntry>) -> Void) {
         // 画像変更時はアプリ側から reloadWidget() されるので .never
-        completion(Timeline(entries: [CageEntry(date: .now, image: loadCageImage())], policy: .never))
+        completion(Timeline(entries: [CageEntry(date: .now, image: loadCageImage(), styleID: loadStyleID())], policy: .never))
     }
 }
 
 struct CageView: View {
     let image: UIImage?
+    let styleID: String
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             let h = geo.size.height
-            let wide = w / h > 1.5   // 中サイズは横長の檻画像
+            let wide = w / h > 1.5   // 中サイズは横長の檻画像（横長版は標準のみ。他の檻は正方形版を使う）
+            let squareName = styleID == "standard" ? "cage_square" : "cage_square_\(styleID)"
+            let cageName = (wide && styleID == "standard") ? "cage_wide" : squareName
 
             ZStack(alignment: .bottom) {
                 // 背景は下端基準（横長でも床が見える）
@@ -67,7 +79,7 @@ struct CageView: View {
                         .padding(.bottom, h * 0.09)
                 }
 
-                Image(wide ? "cage_wide" : "cage_square")
+                Image(cageName)
                     .resizable()
                     .frame(width: w, height: h)
             }
@@ -79,7 +91,7 @@ struct CageView: View {
 struct OriCharaWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "OriCharaWidget", provider: CageProvider()) { entry in
-            CageView(image: entry.image)
+            CageView(image: entry.image, styleID: entry.styleID)
                 .containerBackground(for: .widget) { Color.black }
         }
         .configurationDisplayName("檻キャラ")

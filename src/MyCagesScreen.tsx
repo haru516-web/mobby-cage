@@ -18,7 +18,7 @@ function confirmDelete(onOk: () => void) {
 }
 
 /** 自分で作った檻の一覧（横2列・正方形）。右下の＋で新規作成。 */
-export function MyCagesScreen() {
+export function MyCagesScreen({ styleId }: { styleId: string }) {
   const insets = useSafeAreaInsets();
   const [cages, setCages] = useState<Cage[]>([]);
   const [widgetId, setWidgetId] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function MyCagesScreen() {
         ListEmptyComponent={<Text style={styles.empty}>右下の＋から檻を作ろう</Text>}
         renderItem={({ item }) => (
           <Pressable style={styles.cell} onPress={() => use(item.id)} onLongPress={() => remove(item.id)}>
-            <CageView imageUri={item.uri} style={styles.cage} />
+            <CageView imageUri={item.uri} styleId={styleId} style={styles.cage} />
             {item.id === widgetId && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>ウィジェット</Text>
