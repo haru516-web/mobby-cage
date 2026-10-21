@@ -90,7 +90,7 @@ export async function createCage(sourceUri: string, styleId: string): Promise<vo
   const result = await ImageManipulator.manipulateAsync(
     sourceUri,
     [{ resize: { width: MAX_SIDE } }],
-    { format: ImageManipulator.SaveFormat.PNG, base64: !isIOS }
+    { format: ImageManipulator.SaveFormat.PNG, base64: !sharedDir() }
   );
   const stored: Stored = { id: String(Date.now()), createdAt: Date.now(), styleId };
   const dir = sharedDir();
