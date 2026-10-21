@@ -7,6 +7,8 @@ import { CageCell } from './CageCell';
 import { CageView } from './CageView';
 import { CAGE_STYLES, DEFAULT_STYLE_ID } from './cageStyles';
 import { removeBackground } from './cutout';
+import { LockSheet, type LockRequest } from './LockSheet';
+import { useLock } from './lockStore';
 import { createCage, deleteCage, loadCages, loadWidgetCageId, setWidgetCage, type Cage } from './cageStore';
 
 function confirmDelete(onOk: () => void) {
@@ -32,6 +34,9 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   const [cutting, setCutting] = useState(false);
   const [cutError, setCutError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const lock = useLock();
+  const locked = lock.hasPin && !lock.unlocked; // パスワード設定済みで、まだ解除していない
+  const [lockReq, setLockReq] = useState<LockRequest | null>(null);
   const [editing, setEditing] = useState(false); // 長押しで入る編集モード（ゆらゆら＋×で削除）
 
   const previewUri = mode === 'cutout' && cutoutUri ? cutoutUri : pending;
@@ -90,24 +95,41 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
     }
   };
 
-  const use = async (id: string) => {
+  // ロック中は、パスワードを解除してから続きの操作をやる
+  const guard = (action: () => void) => {
+    if (locked) setLockReq({ kind: 'unlock', then: action });
+    else action();
+  };
+
+  const use = (id: string) => {
     if (editing) {
       setEditing(false);
       return;
     }
-    await setWidgetCage(id);
-    refresh();
+    if (id === widgetId) return; // すでにウィジェットの檻
+    guard(async () => {
+      await setWidgetCage(id);
+      refresh();
+    });
+  };
+
+  const onLockPress = () => {
+    if (!lock.hasPin) setLockReq({ kind: 'setup' });
+    else if (locked) setLockReq({ kind: 'unlock' });
+    else setLockReq({ kind: 'manage' });
   };
 
   const current = cages.find((c) => c.id === widgetId) ?? null;
 
   const remove = (id: string) =>
-    confirmDelete(async () => {
-      await deleteCage(id);
-      const rest = await loadCages();
-      if (rest.length === 0) setEditing(false);
-      refresh();
-    });
+    guard(() =>
+      confirmDelete(async () => {
+        await deleteCage(id);
+        const rest = await loadCages();
+        if (rest.length === 0) setEditing(false);
+        refresh();
+      })
+    );
 
   return (
     <View
@@ -138,7 +160,21 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
           current ? (
             <View style={styles.current}>
               <Text style={styles.currentLabel}>ウィジェットに表示中</Text>
-              <CageView imageUri={current.uri} styleId={current.styleId} style={styles.currentCage} />
+              <View>
+                <CageView imageUri={current.uri} styleId={current.styleId} style={styles.currentCage} />
+                <Pressable
+                  style={styles.lockBtn}
+                  onPress={onLockPress}
+                  hitSlop={8}
+                  accessibilityLabel={!lock.hasPin ? 'ロックを設定' : locked ? 'ロックを解除' : 'ロックの設定'}
+                >
+                  <Ionicons
+                    name={locked ? 'lock-closed' : lock.hasPin ? 'lock-open' : 'lock-open-outline'}
+                    size={20}
+                    color={locked ? '#fff' : lock.hasPin ? '#7be0a8' : '#fff'}
+                  />
+                </Pressable>
+              </View>
               <Text style={styles.listLabel}>すべての檻</Text>
             </View>
           ) : null
@@ -155,11 +191,13 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
             active={item.id === widgetId}
             editing={editing}
             onPress={() => use(item.id)}
-            onLongPress={() => setEditing(true)}
+            onLongPress={() => guard(() => setEditing(true))}
             onDelete={() => remove(item.id)}
           />
         )}
       />
+
+      <LockSheet request={lockReq} onClose={() => setLockReq(null)} />
 
       <Modal visible={pending !== null} animationType="slide" onRequestClose={() => setPending(null)}>
         <View style={[styles.preview, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
@@ -225,6 +263,19 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 16 },
+  lockBtn: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(20,19,26,0.75)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   done: { color: '#fff', fontSize: 15, fontWeight: '800' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 4 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800', paddingHorizontal: 4 },

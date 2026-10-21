@@ -13,6 +13,9 @@ module.exports = {
     backgroundColor: '#14131a',
     plugins: [
       '@bacons/apple-targets',
+      // ロックの解除に Face ID を使う（文言は審査でも見られる）
+      ['expo-local-authentication', { faceIDPermission: 'ロックの解除にFace IDを使います。' }],
+      'expo-secure-store',
       [
         'expo-image-picker',
         {
