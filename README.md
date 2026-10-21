@@ -1,6 +1,6 @@
 # 檻キャラ (ori-chara-ios)
 
-アプリでキャラを選ぶと、ホーム画面ウィジェットでそのキャラが檻に閉じ込められた表示になる。
+アプリで好きな画像をアップすると、ホーム画面ウィジェットでその画像が檻に閉じ込められた表示になる。
 Expo (SDK 54) + `@bacons/apple-targets`（iOS ウィジェット）。Windows だけで開発・ビルドできる。
 
 ## 画面確認（Web）
@@ -8,7 +8,7 @@ Expo (SDK 54) + `@bacons/apple-targets`（iOS ウィジェット）。Windows �
 npm install
 npm run web      # http://localhost:8081
 ```
-Web ではアプリ UI だけ確認できる（ウィジェットは iOS 実機のみ）。
+Web ではアプリ UI だけ確認できる（画像は localStorage に保存）（ウィジェットは iOS 実機のみ）。
 
 ## 実機（iOS）
 ウィジェットはネイティブ拡張なので Expo Go では動かない。EAS Build で作る。
@@ -21,9 +21,9 @@ Web ではアプリ UI だけ確認できる（ウィジェットは iOS 実機�
 5. 公開: `eas build -p ios --profile production` → `eas submit -p ios`
 
 ## 構成
-- `App.tsx` … 画面（プレビュー / 入居ボタン / キャラ一覧 / 使い方）
-- `src/characters.ts` … キャラ定義（mobidou の petCatalog と同じ並び・名前。らにモビーは除外）
-- `src/CageView.tsx` … 檻の描画（アプリ用）
-- `src/selection.ts` … 選択の保存。iOS では App Group に書いてウィジェットを再読込
-- `targets/widget/` … ウィジェット本体（SwiftUI）。`index.swift` に檻の描画が重複してある
-- `assets/characters/` … キャラ画像（512px PNG）。ウィジェットのアセットにも自動で取り込まれる
+- `App.tsx` … ナビバー（マイ檻 / 使える檻）
+- `src/MyCagesScreen.tsx` … 作った檻の一覧（横2列）と＋ボタンでの作成
+- `src/CageStylesScreen.tsx` / `src/cageStyles.ts` … 使える檻（デザイン）の一覧
+- `src/CageView.tsx` … 檻の描画（`assets/bg.png` + 画像 + `assets/cage_square.png`）
+- `src/cageStore.ts` … 檻の保存（600px PNG）。iOS では App Group に `cage_<id>.png`、ウィジェット用に `cage_image.png` へコピーして再読込
+- `targets/widget/` … ウィジェット本体（SwiftUI）。`index.swift` が `cage_image.png` を読み、`assets/bg.png` / `cage_square.png` / `cage_wide.png` と重ねる

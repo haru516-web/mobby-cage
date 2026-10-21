@@ -1,10 +1,8 @@
 import SwiftUI
 import WidgetKit
 
-// アプリ(JS)が ExtensionStorage で書き込む値を読む。
-// App Group は Info.plist の AppGroup キーではなく、entitlements の先頭を使う。
-private let selectionKey = "selectedCharacterID"
-private let fallbackID = "mobirin"
+// アプリ(JS)が App Group のコンテナに書き込んだ画像(cage_image.png)を読む。
+private let imageFileName = "cage_image.png"
 
 private func appGroupID() -> String? {
     // app.config.js の BUNDLE_ID から "group.<bundle id>" を作っているので、
@@ -13,38 +11,38 @@ private func appGroupID() -> String? {
     while id.split(separator: ".").count > 3 {
         id = id.split(separator: ".").dropLast().joined(separator: ".")
     }
-    return "group.\(id)"
+    return "group.(id)"
 }
 
-private func selectedID() -> String {
+private func loadCageImage() -> UIImage? {
     guard let group = appGroupID(),
-          let id = UserDefaults(suiteName: group)?.string(forKey: selectionKey)
-    else { return fallbackID }
-    return id
+          let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
+    else { return nil }
+    return UIImage(contentsOfFile: dir.appendingPathComponent(imageFileName).path)
 }
 
 struct CageEntry: TimelineEntry {
     let date: Date
-    let characterID: String
+    let image: UIImage?
 }
 
 struct CageProvider: TimelineProvider {
     func placeholder(in context: Context) -> CageEntry {
-        CageEntry(date: .now, characterID: fallbackID)
+        CageEntry(date: .now, image: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CageEntry) -> Void) {
-        completion(CageEntry(date: .now, characterID: selectedID()))
+        completion(CageEntry(date: .now, image: loadCageImage()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CageEntry>) -> Void) {
-        // 選択変更時はアプリ側から reloadWidget() されるので .never
-        completion(Timeline(entries: [CageEntry(date: .now, characterID: selectedID())], policy: .never))
+        // 画像変更時はアプリ側から reloadWidget() されるので .never
+        completion(Timeline(entries: [CageEntry(date: .now, image: loadCageImage())], policy: .never))
     }
 }
 
 struct CageView: View {
-    let characterID: String
+    let image: UIImage?
 
     var body: some View {
         GeometryReader { geo in
@@ -60,17 +58,18 @@ struct CageView: View {
                     .frame(width: w, height: h, alignment: .bottom)
                     .clipped()
 
-                // キャラ画像は足元が画像の下端に揃えてある。足元を床(約91%の高さ)に置く
-                Image(characterID)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: w * 0.8, height: h * 0.78, alignment: .bottom)
-                    .padding(.bottom, h * 0.09)
+                // 画像の下端を床(約91%の高さ)に置く
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: w * 0.8, height: h * 0.78, alignment: .bottom)
+                        .padding(.bottom, h * 0.09)
+                }
 
                 Image(wide ? "cage_wide" : "cage_square")
                     .resizable()
                     .frame(width: w, height: h)
-                    .opacity(0.85)
             }
             .frame(width: w, height: h)
         }
@@ -80,11 +79,11 @@ struct CageView: View {
 struct OriCharaWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "OriCharaWidget", provider: CageProvider()) { entry in
-            CageView(characterID: entry.characterID)
+            CageView(image: entry.image)
                 .containerBackground(for: .widget) { Color.black }
         }
         .configurationDisplayName("檻キャラ")
-        .description("選んだキャラが檻に閉じ込められています。")
+        .description("アップした画像が檻に閉じ込められています。")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }

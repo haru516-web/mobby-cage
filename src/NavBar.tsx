@@ -2,12 +2,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export type Tab = 'cage' | 'chara' | 'item';
+export type Tab = 'mine' | 'styles';
 
 const TABS: { key: Tab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'cage', label: 'cage', icon: 'lock-closed' },
-  { key: 'chara', label: 'キャラ', icon: 'paw' },
-  { key: 'item', label: 'アイテム', icon: 'gift' },
+  { key: 'mine', label: 'マイ檻', icon: 'lock-closed' },
+  { key: 'styles', label: '使える檻', icon: 'grid' },
 ];
 
 export function NavBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
