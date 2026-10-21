@@ -29,6 +29,9 @@ export function LockSheet({ request, onClose }: { request: LockRequest | null; o
   const [message, setMessage] = useState<string | null>(null);
   const [bio, setBio] = useState(false);
   const busy = useRef(false);
+  const [showAll, setShowAll] = useState(false); // 目のアイコンで、入力した数字をすべて表示
+  const [flash, setFlash] = useState(false); // 押した直後だけ、最後の数字を表示
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 開くたびに最初の状態へ。解除のときは Face ID を自動で試す。
   useEffect(() => {
@@ -37,6 +40,8 @@ export function LockSheet({ request, onClose }: { request: LockRequest | null; o
     setPinValue('');
     setFirst('');
     setMessage(null);
+    setShowAll(false);
+    setFlash(false);
     if (request.kind === 'unlock') {
       biometricAvailable().then((ok) => {
         setBio(ok);
@@ -58,9 +63,16 @@ export function LockSheet({ request, onClose }: { request: LockRequest | null; o
   };
 
   const onDigits = async (value: string) => {
+    if (busy.current) return;
     setPinValue(value);
-    if (value.length < PIN_LENGTH || busy.current) return;
+    if (value.length > pin.length) {
+      setFlash(true);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlash(false), 700);
+    }
+    if (value.length < PIN_LENGTH) return;
     busy.current = true;
+    await new Promise((r) => setTimeout(r, 350)); // 最後の数字が見えるように、少し待ってから確認する
     try {
       if (step === 'enter') {
         setFirst(value);
@@ -126,7 +138,13 @@ export function LockSheet({ request, onClose }: { request: LockRequest | null; o
               <Text style={styles.body}>
                 {step === 'enter' ? `数字${PIN_LENGTH}桁を入力` : step === 'confirm' ? '確認のため、同じパスワードを入力' : ' '}
               </Text>
-              <Dots count={pin.length} />
+              <View style={styles.dotsRow}>
+                <View style={styles.eyeSpace} />
+                <Dots value={pin} reveal={showAll} flash={flash} />
+                <Pressable onPress={() => setShowAll((v) => !v)} hitSlop={10} style={styles.eyeSpace} accessibilityLabel={showAll ? '数字を隠す' : '数字を表示'}>
+                  <Ionicons name={showAll ? 'eye-off-outline' : 'eye-outline'} size={22} color="#8d8a9f" />
+                </Pressable>
+              </View>
               <Text style={styles.message}>{message ?? ' '}</Text>
               <Keypad value={pin} onChange={onDigits} />
               {step === 'unlock' && (
@@ -219,12 +237,19 @@ function Btn({ label, onPress, primary }: { label: string; onPress: () => void; 
   );
 }
 
-function Dots({ count }: { count: number }) {
+function Dots({ value, reveal, flash }: { value: string; reveal: boolean; flash: boolean }) {
   return (
     <View style={styles.dots}>
-      {Array.from({ length: PIN_LENGTH }, (_, i) => (
-        <View key={i} style={[styles.dot, i < count && styles.dotFilled]} />
-      ))}
+      {Array.from({ length: PIN_LENGTH }, (_, i) => {
+        const filled = i < value.length;
+        // 数字を見せるのは、「すべて表示」のときと、押した直後の最後の1桁だけ
+        const show = filled && (reveal || (flash && i === value.length - 1));
+        return (
+          <View key={i} style={[styles.box, filled && styles.boxFilled]}>
+            {filled && (show ? <Text style={styles.boxDigit}>{value[i]}</Text> : <View style={styles.boxDot} />)}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -247,10 +272,15 @@ function Keypad({ value, onChange }: { value: string; onChange: (v: string) => v
             }}
             accessibilityLabel={k === 'del' ? '削除' : k}
           >
-            {k === 'del' ? (
-              <Ionicons name="backspace-outline" size={24} color="#fff" />
-            ) : (
-              <Text style={styles.keyText}>{k}</Text>
+            {({ pressed }) => (
+              // 押している間は丸く光らせて、どのキーを押したか分かるようにする
+              <View style={[styles.keyFace, pressed && styles.keyFacePressed]}>
+                {k === 'del' ? (
+                  <Ionicons name="backspace-outline" size={24} color="#fff" />
+                ) : (
+                  <Text style={styles.keyText}>{k}</Text>
+                )}
+              </View>
             )}
           </Pressable>
         )
@@ -270,12 +300,26 @@ const styles = StyleSheet.create({
   btnPrimary: { backgroundColor: '#fff' },
   btnText: { color: '#e6e4f0', fontSize: 14, fontWeight: '700' },
   btnTextPrimary: { color: '#14131a', fontWeight: '800' },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 14, marginTop: 16 },
-  dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: '#8d8a9f' },
-  dotFilled: { backgroundColor: '#fff', borderColor: '#fff' },
+  dotsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 16 },
+  eyeSpace: { width: 28, alignItems: 'center', justifyContent: 'center' },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
+  box: {
+    width: 40,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#4a4859',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxFilled: { borderColor: '#fff', backgroundColor: '#2c2a39' },
+  boxDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#fff' },
+  boxDigit: { color: '#fff', fontSize: 24, fontWeight: '800' },
   message: { color: '#ff9aa8', fontSize: 12, textAlign: 'center', marginTop: 10, minHeight: 18 },
   keypad: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
-  key: { width: '33.33%', height: 54, alignItems: 'center', justifyContent: 'center' },
+  key: { width: '33.33%', height: 58, alignItems: 'center', justifyContent: 'center' },
+  keyFace: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  keyFacePressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
   keyText: { color: '#fff', fontSize: 24, fontWeight: '600' },
   links: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 4 },
   link: { color: '#9cc3ff', fontSize: 13, fontWeight: '600' },
