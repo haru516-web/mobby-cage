@@ -12,7 +12,7 @@ private func appGroupID() -> String? {
     while id.split(separator: ".").count > 3 {
         id = id.split(separator: ".").dropLast().joined(separator: ".")
     }
-    return "group.(id)"
+    return "group.\(id)"
 }
 
 private func loadCageImage() -> UIImage? {
@@ -62,12 +62,16 @@ struct CageView: View {
             let bgName = styleID == "standard" ? "bg" : "bg_\(styleID)"
 
             ZStack(alignment: .bottom) {
-                // 背景は下端基準
-                Image(bgName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: w, height: h, alignment: .bottom)
-                    .clipped()
+                // 背景は下端基準。画像が見つからなくても、真っ白にならないよう色で代用する
+                if UIImage(named: bgName) != nil {
+                    Image(bgName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: w, height: h, alignment: .bottom)
+                        .clipped()
+                } else {
+                    Color(red: 0.89, green: 0.86, blue: 1.0)
+                }
 
                 // 画像の下端を床(約91%の高さ)に置く
                 if let image {
@@ -76,11 +80,20 @@ struct CageView: View {
                         .scaledToFit()
                         .frame(width: w * 0.8, height: h * 0.78, alignment: .bottom)
                         .padding(.bottom, h * 0.09)
+                } else {
+                    // まだ檻を作っていない（または画像を読めない）とき
+                    Text("アプリで\n画像を選んでね")
+                        .font(.system(size: min(w, h) * 0.09, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(Color(red: 0.2, green: 0.18, blue: 0.3))
+                        .frame(width: w, height: h * 0.9, alignment: .center)
                 }
 
-                Image(squareName)
-                    .resizable()
-                    .frame(width: w, height: h)
+                if UIImage(named: squareName) != nil {
+                    Image(squareName)
+                        .resizable()
+                        .frame(width: w, height: h)
+                }
             }
             .frame(width: w, height: h)
         }
