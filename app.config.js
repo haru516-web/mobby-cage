@@ -1,5 +1,5 @@
-// Bundle ID / App Group はここ1か所で決まる。自分の Apple Developer のものに変える。
-const BUNDLE_ID = 'com.example.orikko';
+// Bundle ID / App Group はここ1か所で決まる（App Group は group.<Bundle ID>）。
+const BUNDLE_ID = 'com.orikko.app';
 const APP_GROUP = `group.${BUNDLE_ID}`;
 
 module.exports = {
@@ -28,6 +28,7 @@ module.exports = {
     ],
     ios: {
       bundleIdentifier: BUNDLE_ID,
+      appleTeamId: '473V9BLJ33',
       supportsTablet: false,
       entitlements: {
         'com.apple.security.application-groups': [APP_GROUP],
