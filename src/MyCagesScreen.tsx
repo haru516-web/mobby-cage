@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CageView } from './CageView';
+import { CAGE_STYLES, DEFAULT_STYLE_ID } from './cageStyles';
 import { createCage, deleteCage, loadCages, loadWidgetCageId, setWidgetCage, type Cage } from './cageStore';
 
 function confirmDelete(onOk: () => void) {
@@ -18,11 +19,12 @@ function confirmDelete(onOk: () => void) {
 }
 
 /** 自分で作った檻の一覧（横2列・正方形）。右下の＋で新規作成。 */
-export function MyCagesScreen({ styleId }: { styleId: string }) {
+export function MyCagesScreen() {
   const insets = useSafeAreaInsets();
   const [cages, setCages] = useState<Cage[]>([]);
   const [widgetId, setWidgetId] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null); // 選んだ直後でまだ保存していない画像
+  const [pendingStyle, setPendingStyle] = useState(DEFAULT_STYLE_ID); // プレビューで選んでいる檻のデザイン
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -40,6 +42,7 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
       quality: 1,
     });
     if (res.canceled) return;
+    setPendingStyle(DEFAULT_STYLE_ID);
     setPending(res.assets[0].uri);
   };
 
@@ -47,7 +50,7 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
     if (!pending || saving) return;
     setSaving(true);
     try {
-      await createCage(pending);
+      await createCage(pending, pendingStyle);
       setPending(null);
       refresh();
     } finally {
@@ -80,7 +83,7 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
         ListEmptyComponent={<Text style={styles.empty}>右下の＋から檻を作ろう</Text>}
         renderItem={({ item }) => (
           <Pressable style={styles.cell} onPress={() => use(item.id)} onLongPress={() => remove(item.id)}>
-            <CageView imageUri={item.uri} styleId={styleId} style={styles.cage} />
+            <CageView imageUri={item.uri} styleId={item.styleId} style={styles.cage} />
             {item.id === widgetId && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>ウィジェット</Text>
@@ -93,10 +96,22 @@ export function MyCagesScreen({ styleId }: { styleId: string }) {
       <Modal visible={pending !== null} animationType="slide" onRequestClose={() => setPending(null)}>
         <View style={[styles.preview, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
           <Text style={styles.title}>プレビュー</Text>
-          <Text style={styles.sub}>この檻に閉じ込めます</Text>
+          <Text style={styles.sub}>檻のデザインを選べます</Text>
           <View style={styles.previewCage}>
-            <CageView imageUri={pending} styleId={styleId} />
+            <CageView imageUri={pending} styleId={pendingStyle} />
           </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleRow} contentContainerStyle={styles.styleRowContent}>
+            {CAGE_STYLES.map((s) => (
+              <Pressable key={s.id} onPress={() => setPendingStyle(s.id)} style={styles.styleItem}>
+                <CageView
+                  imageUri={pending}
+                  styleId={s.id}
+                  style={[styles.styleThumb, s.id === pendingStyle && styles.styleThumbActive]}
+                />
+                <Text style={[styles.styleName, s.id === pendingStyle && styles.styleNameActive]}>{s.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
           <View style={styles.previewButtons}>
             <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => setPending(null)}>
               <Text style={styles.btnGhostText}>やめる</Text>
@@ -135,6 +150,13 @@ const styles = StyleSheet.create({
   badgeText: { color: '#14131a', fontSize: 10, fontWeight: '800' },
   preview: { flex: 1, backgroundColor: '#14131a', paddingHorizontal: 20 },
   previewCage: { marginTop: 20, width: '100%', maxWidth: 420, alignSelf: 'center' },
+  styleRow: { marginTop: 16, flexGrow: 0 },
+  styleRowContent: { gap: 10, paddingHorizontal: 2 },
+  styleItem: { width: 72, alignItems: 'center' },
+  styleThumb: { width: 72, borderRadius: 12, borderWidth: 2, borderColor: 'transparent' },
+  styleThumbActive: { borderColor: '#fff' },
+  styleName: { color: '#8d8a9f', fontSize: 10, fontWeight: '600', marginTop: 4 },
+  styleNameActive: { color: '#fff' },
   previewButtons: { marginTop: 'auto', flexDirection: 'row', gap: 12, maxWidth: 420, width: '100%', alignSelf: 'center' },
   btn: { flex: 1, borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
   btnGhost: { backgroundColor: '#2c2a39' },

@@ -2,11 +2,13 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { DEFAULT_STYLE_ID } from './cageStyles';
 import { Directory, File, Paths } from 'expo-file-system';
 
 export type Cage = {
   id: string;
   uri: string;
+  styleId: string;
   createdAt: number;
 };
 
@@ -16,7 +18,7 @@ const WIDGET_FILE = 'cage_image.png'; // ウィジェット(Swift)が読むフ�
 const MAX_SIDE = 600; // ウィジェットのメモリ上限に収めるため縮小して保存する
 
 // iOS は画像をファイルで持つ。Web は data URI をそのまま持つ。
-type Stored = { id: string; createdAt: number; dataUri?: string };
+type Stored = { id: string; createdAt: number; styleId?: string; dataUri?: string };
 
 const isIOS = Platform.OS === 'ios';
 
@@ -48,7 +50,7 @@ function uriOf(s: Stored): string {
 export async function loadCages(): Promise<Cage[]> {
   const list = await readStored();
   return list
-    .map((s) => ({ id: s.id, createdAt: s.createdAt, uri: uriOf(s) }))
+    .map((s) => ({ id: s.id, createdAt: s.createdAt, styleId: s.styleId ?? DEFAULT_STYLE_ID, uri: uriOf(s) }))
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -79,17 +81,18 @@ export async function setWidgetCage(id: string): Promise<void> {
     if (dest.exists) dest.delete();
     new File(dir, `cage_${id}.png`).copy(dest);
   } catch {}
-  reloadWidget();
+  const style = (await readStored()).find((s) => s.id === id)?.styleId ?? DEFAULT_STYLE_ID;
+  await saveStyleId(style); // ウィジェットの檻デザインも切り替えて再描画
 }
 
 /** 選んだ画像を縮小して新しい檻として保存する。最初の1つは自動でウィジェットに設定。 */
-export async function createCage(sourceUri: string): Promise<void> {
+export async function createCage(sourceUri: string, styleId: string): Promise<void> {
   const result = await ImageManipulator.manipulateAsync(
     sourceUri,
     [{ resize: { width: MAX_SIDE } }],
     { format: ImageManipulator.SaveFormat.PNG, base64: !isIOS }
   );
-  const stored: Stored = { id: String(Date.now()), createdAt: Date.now() };
+  const stored: Stored = { id: String(Date.now()), createdAt: Date.now(), styleId };
   const dir = sharedDir();
   if (dir) {
     new File(result.uri).copy(new File(dir, `cage_${stored.id}.png`));
@@ -127,16 +130,8 @@ export async function deleteCage(id: string): Promise<void> {
 
 const STYLE_KEY = 'cageStyleID'; // ウィジェット(Swift)も同じキーで読む
 
-export async function loadStyleId(): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(STYLE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-/** 使う檻のデザインを保存し、iOS ではウィジェットにも伝えて再描画させる。 */
-export async function saveStyleId(id: string): Promise<void> {
+/** ウィジェットが使う檻のデザインを保存し、iOS では再描画させる。 */
+async function saveStyleId(id: string): Promise<void> {
   try {
     await AsyncStorage.setItem(STYLE_KEY, id);
   } catch {}
