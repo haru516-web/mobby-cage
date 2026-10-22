@@ -29,6 +29,13 @@ private func loadStyleID() -> String {
     return id
 }
 
+// 檻の中の画像の位置(x,y は幅・高さに対する比率)とサイズ(倍率)。アプリ側の調整と同じ
+private func loadAdjust() -> (x: Double, y: Double, scale: Double) {
+    guard let group = appGroupID(), let d = UserDefaults(suiteName: group) else { return (0, 0, 1) }
+    let scale = d.object(forKey: "cageScale") != nil ? d.double(forKey: "cageScale") : 1
+    return (d.double(forKey: "cageX"), d.double(forKey: "cageY"), scale)
+}
+
 // 画像が読めないときの原因調べ用。ウィジェットの中に小さく出す（c: 共有領域 / f: 画像ファイル）
 private func diagnostics() -> String {
     guard let group = appGroupID() else { return "id:none" }
@@ -46,6 +53,7 @@ struct CageEntry: TimelineEntry {
     let image: UIImage?
     let styleID: String
     let diag: String
+    let adjust: (x: Double, y: Double, scale: Double) = loadAdjust()
 }
 
 struct CageProvider: TimelineProvider {
@@ -67,6 +75,7 @@ struct CageView: View {
     let image: UIImage?
     let styleID: String
     let diag: String
+    let adjust: (x: Double, y: Double, scale: Double)
 
     var body: some View {
         GeometryReader { geo in
@@ -94,6 +103,8 @@ struct CageView: View {
                         .scaledToFit()
                         .frame(width: w * 0.8, height: h * 0.78, alignment: .bottom)
                         .padding(.bottom, h * 0.09)
+                        .scaleEffect(adjust.scale)
+                        .offset(x: w * adjust.x, y: w * adjust.y)
                 } else {
                     // まだ檻を作っていない（または画像を読めない）とき
                     VStack(spacing: 6) {
@@ -121,7 +132,7 @@ struct CageView: View {
 struct OrikkoWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "OrikkoWidget", provider: CageProvider()) { entry in
-            CageView(image: entry.image, styleID: entry.styleID, diag: entry.diag)
+            CageView(image: entry.image, styleID: entry.styleID, diag: entry.diag, adjust: entry.adjust)
                 .containerBackground(for: .widget) { Color.black }
         }
         .configurationDisplayName("おりっこ")

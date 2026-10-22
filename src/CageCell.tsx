@@ -48,7 +48,7 @@ export function CageCell({
   return (
     <Animated.View style={[styles.cell, { transform: [{ rotate }] }]}>
       <Pressable onPress={onPress} onLongPress={editing ? undefined : onLongPress}>
-        <CageView imageUri={cage.uri} styleId={cage.styleId} style={styles.cage} />
+        <CageView imageUri={cage.uri} styleId={cage.styleId} adjust={cage.adjust} style={styles.cage} />
         {active && !editing && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>ウィジェット</Text>

@@ -4,12 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CageCell } from './CageCell';
-import { CageView } from './CageView';
+import { AdjustableCage } from './AdjustableCage';
+import { CageView, DEFAULT_ADJUST, type Adjust } from './CageView';
 import { CAGE_STYLES, DEFAULT_STYLE_ID } from './cageStyles';
 import { removeBackground } from './cutout';
 import { LockSheet, type LockRequest } from './LockSheet';
 import { useLock } from './lockStore';
-import { createCage, deleteCage, loadCages, loadWidgetCageId, setWidgetCage, type Cage } from './cageStore';
+import { createCage, deleteCage, loadCages, loadWidgetCageId, setWidgetCage, updateAdjust, type Cage } from './cageStore';
 
 function confirmDelete(onOk: () => void) {
   if (Platform.OS === 'web') {
@@ -29,6 +30,8 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
   const [widgetId, setWidgetId] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null); // 選んだ直後でまだ保存していない画像
   const [pendingStyle, setPendingStyle] = useState(DEFAULT_STYLE_ID); // プレビューで選んでいる檻のデザイン
+  const [adjust, setAdjust] = useState<Adjust>(DEFAULT_ADJUST); // 檻の中の画像の位置・サイズ
+  const [adjustId, setAdjustId] = useState<string | null>(null); // 既存の檻の調整中ならその id
   const [mode, setMode] = useState<'original' | 'cutout'>('original'); // そのまま使う / 背景を透過して使う
   const [cutoutUri, setCutoutUri] = useState<string | null>(null);
   const [cutting, setCutting] = useState(false);
@@ -56,6 +59,8 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
       quality: 1,
     });
     if (res.canceled) return;
+    setAdjustId(null);
+    setAdjust(DEFAULT_ADJUST);
     setPendingStyle(DEFAULT_STYLE_ID);
     setMode('original');
     setCutoutUri(null);
@@ -83,11 +88,22 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
     }
   };
 
+  const startAdjust = (c: Cage) => {
+    setAdjustId(c.id);
+    setAdjust(c.adjust);
+    setPendingStyle(c.styleId);
+    setMode('original');
+    setCutoutUri(null);
+    setCutError(null);
+    setPending(c.uri);
+  };
+
   const save = async () => {
     if (!pending || saving) return;
     setSaving(true);
     try {
-      await createCage(previewUri ?? pending, pendingStyle);
+      if (adjustId) await updateAdjust(adjustId, adjust);
+      else await createCage(previewUri ?? pending, pendingStyle, adjust);
       setPending(null);
       refresh();
     } finally {
@@ -161,7 +177,10 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
             <View style={styles.current}>
               <Text style={styles.currentLabel}>ウィジェットに表示中</Text>
               <View>
-                <CageView imageUri={current.uri} styleId={current.styleId} style={styles.currentCage} />
+                <CageView imageUri={current.uri} styleId={current.styleId} adjust={current.adjust} style={styles.currentCage} />
+                <Pressable style={styles.adjustBtn} onPress={() => guard(() => startAdjust(current))} hitSlop={8} accessibilityLabel="位置とサイズを調整">
+                  <Ionicons name="resize" size={20} color="#fff" />
+                </Pressable>
                 <Pressable
                   style={styles.lockBtn}
                   onPress={onLockPress}
@@ -201,10 +220,10 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
 
       <Modal visible={pending !== null} animationType="slide" onRequestClose={() => setPending(null)}>
         <View style={[styles.preview, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
-          <Text style={styles.title}>プレビュー</Text>
-          <Text style={styles.sub}>檻のデザインを選べます</Text>
+          <Text style={styles.title}>{adjustId ? '位置とサイズ' : 'プレビュー'}</Text>
+          <Text style={styles.sub}>{adjustId ? '画像をドラッグして動かせます' : '檻のデザインを選べます'}</Text>
           <View style={styles.previewCage}>
-            <CageView imageUri={previewUri} styleId={pendingStyle} />
+            <AdjustableCage imageUri={previewUri} styleId={pendingStyle} adjust={adjust} onChange={setAdjust} />
             {cutting && (
               <View style={styles.cuttingOverlay}>
                 <ActivityIndicator color="#fff" />
@@ -212,6 +231,7 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
               </View>
             )}
           </View>
+          {!adjustId && (
           <View style={styles.modeRow}>
             {(
               [
@@ -228,25 +248,29 @@ export function MyCagesScreen({ onHelp }: { onHelp: () => void }) {
               </Pressable>
             ))}
           </View>
+          )}
           {cutError && <Text style={styles.cutError}>{cutError}</Text>}
+          {!adjustId && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleRow} contentContainerStyle={styles.styleRowContent}>
             {CAGE_STYLES.map((s) => (
               <Pressable key={s.id} onPress={() => setPendingStyle(s.id)} style={styles.styleItem}>
                 <CageView
                   imageUri={previewUri}
                   styleId={s.id}
+                  adjust={adjust}
                   style={[styles.styleThumb, s.id === pendingStyle && styles.styleThumbActive]}
                 />
                 <Text style={[styles.styleName, s.id === pendingStyle && styles.styleNameActive]}>{s.name}</Text>
               </Pressable>
             ))}
           </ScrollView>
+          )}
           <View style={styles.previewButtons}>
             <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => setPending(null)}>
               <Text style={styles.btnGhostText}>やめる</Text>
             </Pressable>
             <Pressable style={[styles.btn, styles.btnMain]} onPress={save} disabled={saving}>
-              <Text style={styles.btnMainText}>{saving ? '保存中…' : 'この檻にする'}</Text>
+              <Text style={styles.btnMainText}>{saving ? '保存中…' : adjustId ? '保存' : 'この檻にする'}</Text>
             </Pressable>
           </View>
         </View>
@@ -266,6 +290,19 @@ const styles = StyleSheet.create({
   lockBtn: {
     position: 'absolute',
     right: 12,
+    bottom: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(20,19,26,0.75)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adjustBtn: {
+    position: 'absolute',
+    left: 12,
     bottom: 12,
     width: 40,
     height: 40,
