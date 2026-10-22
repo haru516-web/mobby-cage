@@ -64,10 +64,27 @@ export async function loadWidgetCageId(): Promise<string | null> {
   }
 }
 
+// ウィジェットと共有する UserDefaults の読み書きと再描画（@bacons/apple-targets のネイティブ部品）。
+// ライブラリの JS ラッパーは起動時に部品を見つけられず何もしない代用品になることがあるので、部品を直接呼ぶ。
+// ネイティブビルド（dev build / EAS）でのみ存在し、Expo Go や Web では null。
+type WidgetNative = {
+  setString(key: string, value: string, group: string): void;
+  get(key: string, group: string): string | null;
+  reloadWidget(timeline: string | null): void;
+};
+
+function widgetNative(): WidgetNative | null {
+  if (!isIOS) return null;
+  try {
+    return require('expo-modules-core').requireOptionalNativeModule('ExtensionStorage');
+  } catch {
+    return null;
+  }
+}
+
 function reloadWidget() {
   try {
-    // ネイティブビルド（dev build / EAS）でのみ存在する。Expo Go では失敗するので握りつぶす。
-    require('@bacons/apple-targets').ExtensionStorage.reloadWidget();
+    widgetNative()?.reloadWidget(null);
   } catch {}
 }
 
@@ -82,7 +99,10 @@ export async function setWidgetCage(id: string): Promise<void> {
     const dest = new File(dir, WIDGET_FILE);
     if (dest.exists) dest.delete();
     new File(dir, `cage_${id}.png`).copy(dest);
-  } catch {}
+    console.warn('[widget] copied', id, dest.uri, dest.exists);
+  } catch (e) {
+    console.warn('[widget] copy failed', id, String(e));
+  }
   const found = (await readStored()).find((s) => s.id === id);
   // ウィジェットの檻デザインと画像の位置・サイズも切り替えて再描画
   await saveStyleId(found?.styleId ?? DEFAULT_STYLE_ID, found?.adjust ?? DEFAULT_ADJUST);
@@ -149,16 +169,17 @@ async function saveStyleId(id: string, adjust: Adjust): Promise<void> {
   try {
     await AsyncStorage.setItem(STYLE_KEY, id);
   } catch {}
-  if (!isIOS) return;
+  const native = widgetNative();
+  const group = Constants.expoConfig?.extra?.appGroup as string;
   try {
-    const { ExtensionStorage } = require('@bacons/apple-targets');
-    const group = Constants.expoConfig?.extra?.appGroup as string;
-    const storage = new ExtensionStorage(group);
-    storage.set(STYLE_KEY, id);
-    // 数値を渡すと整数(Int)として保存されて小数が消えるので、文字列で渡す（Swift 側で Double に戻す）
-    storage.set('cageX', String(adjust.x));
-    storage.set('cageY', String(adjust.y));
-    storage.set('cageScale', String(adjust.scale));
-  } catch {}
+    native?.setString(STYLE_KEY, id, group);
+    // 数値は文字列で渡す（Swift 側で Double に戻す）
+    native?.setString('cageX', String(adjust.x), group);
+    native?.setString('cageY', String(adjust.y), group);
+    native?.setString('cageScale', String(adjust.scale), group);
+    console.warn('[widget] saved', !!native, native?.get(STYLE_KEY, group), native?.get('cageScale', group));
+  } catch (e) {
+    console.warn('[widget] save failed', String(e));
+  }
   reloadWidget();
 }

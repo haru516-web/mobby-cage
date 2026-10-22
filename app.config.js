@@ -13,6 +13,8 @@ module.exports = {
     backgroundColor: '#14131a',
     plugins: [
       '@bacons/apple-targets',
+      // ウィジェットとの共有(ExtensionStorage)は iOS 16.4 以上が必要。これより低いと自動リンクから黙って外される。
+      ['expo-build-properties', { ios: { deploymentTarget: '16.4' } }],
       // ロックの解除に Face ID を使う（文言は審査でも見られる）
       ['expo-local-authentication', { faceIDPermission: 'ロックの解除にFace IDを使います。' }],
       'expo-secure-store',
