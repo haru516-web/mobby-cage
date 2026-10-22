@@ -76,7 +76,7 @@ type WidgetNative = {
 function widgetNative(): WidgetNative | null {
   if (!isIOS) return null;
   try {
-    return require('expo-modules-core').requireOptionalNativeModule('ExtensionStorage');
+    return require('expo').requireOptionalNativeModule('ExtensionStorage');
   } catch {
     return null;
   }
