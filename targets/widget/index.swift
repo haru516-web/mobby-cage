@@ -32,8 +32,11 @@ private func loadStyleID() -> String {
 // 檻の中の画像の位置(x,y は幅・高さに対する比率)とサイズ(倍率)。アプリ側の調整と同じ
 private func loadAdjust() -> (x: Double, y: Double, scale: Double) {
     guard let group = appGroupID(), let d = UserDefaults(suiteName: group) else { return (0, 0, 1) }
-    let scale = d.object(forKey: "cageScale") != nil ? d.double(forKey: "cageScale") : 1
-    return (d.double(forKey: "cageX"), d.double(forKey: "cageY"), scale)
+    // アプリは文字列で保存する（数値だと整数に丸められるため）
+    func num(_ key: String, _ fallback: Double) -> Double {
+        d.string(forKey: key).flatMap(Double.init) ?? fallback
+    }
+    return (num("cageX", 0), num("cageY", 0), num("cageScale", 1))
 }
 
 // 画像が読めないときの原因調べ用。ウィジェットの中に小さく出す（c: 共有領域 / f: 画像ファイル）
@@ -96,15 +99,16 @@ struct CageView: View {
                     Color(red: 0.89, green: 0.86, blue: 1.0)
                 }
 
-                // 画像の下端を床(約91%の高さ)に置く
+                // 床の上(下から9%)の枠に収めて中央に置く。アプリ(CageView.tsx の resizeMode="contain")と同じ位置。
+                // 拡大縮小は枠の中心を基準にしてから、ずらす（アプリの transform と同じ順）
                 if let image {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: w * 0.8, height: h * 0.78, alignment: .bottom)
-                        .padding(.bottom, h * 0.09)
+                        .frame(width: w * 0.8, height: h * 0.78, alignment: .center)
                         .scaleEffect(adjust.scale)
                         .offset(x: w * adjust.x, y: w * adjust.y)
+                        .padding(.bottom, h * 0.09)
                 } else {
                     // まだ檻を作っていない（または画像を読めない）とき
                     VStack(spacing: 6) {

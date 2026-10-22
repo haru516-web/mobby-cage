@@ -99,9 +99,11 @@ export async function updateAdjust(id: string, adjust: Adjust): Promise<void> {
 
 /** 選んだ画像を縮小して新しい檻として保存する。最初の1つは自動でウィジェットに設定。 */
 export async function createCage(sourceUri: string, styleId: string, adjust: Adjust = DEFAULT_ADJUST): Promise<void> {
+  // 縦長の画像でも大きくなりすぎないよう、長い辺を MAX_SIDE に揃える
+  const { width, height } = await ImageManipulator.manipulateAsync(sourceUri, []);
   const result = await ImageManipulator.manipulateAsync(
     sourceUri,
-    [{ resize: { width: MAX_SIDE } }],
+    [{ resize: width >= height ? { width: MAX_SIDE } : { height: MAX_SIDE } }],
     { format: ImageManipulator.SaveFormat.PNG, base64: !sharedDir() }
   );
   const stored: Stored = { id: String(Date.now()), createdAt: Date.now(), styleId, adjust };
@@ -153,9 +155,10 @@ async function saveStyleId(id: string, adjust: Adjust): Promise<void> {
     const group = Constants.expoConfig?.extra?.appGroup as string;
     const storage = new ExtensionStorage(group);
     storage.set(STYLE_KEY, id);
-    storage.set('cageX', adjust.x);
-    storage.set('cageY', adjust.y);
-    storage.set('cageScale', adjust.scale);
-    ExtensionStorage.reloadWidget();
+    // 数値を渡すと整数(Int)として保存されて小数が消えるので、文字列で渡す（Swift 側で Double に戻す）
+    storage.set('cageX', String(adjust.x));
+    storage.set('cageY', String(adjust.y));
+    storage.set('cageScale', String(adjust.scale));
   } catch {}
+  reloadWidget();
 }
